@@ -63,47 +63,53 @@ func main() {
 		os.Exit(1)
 	}
 
-	if url != "" {
-		urlCh <- url
-	} else {
-		file, err := os.Open(urlList)
-		if err != nil {
-			fmt.Printf("Error opening URL list file: %s\n", err)
-			os.Exit(1)
-		}
-		defer file.Close()
+	go func() {
+		defer close(urlCh)
+		if url != "" {
+			urlCh <- url
+		} else {
+			file, err := os.Open(urlList)
+			if err != nil {
+				fmt.Printf("Error opening URL list file: %s\n", err)
+				os.Exit(1)
+			}
+			defer file.Close()
 
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			urlCh <- strings.TrimSpace(scanner.Text())
-		}
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				urlCh <- strings.TrimSpace(scanner.Text())
+			}
 
-		if err := scanner.Err(); err != nil {
-			fmt.Printf("Error reading URL list: %s\n", err)
-			os.Exit(1)
+			if err := scanner.Err(); err != nil {
+				fmt.Printf("Error reading URL list: %s\n", err)
+				os.Exit(1)
+			}
 		}
-	}
+	}()
 
-	if dirList != "" {
-		file, err := os.Open(dirList)
-		if err != nil {
-			fmt.Printf("Error opening directory list file: %s\n", err)
-			os.Exit(1)
-		}
-		defer file.Close()
+	go func() {
+		defer close(dirCh)
+		if dirList != "" {
+			file, err := os.Open(dirList)
+			if err != nil {
+				fmt.Printf("Error opening directory list file: %s\n", err)
+				os.Exit(1)
+			}
+			defer file.Close()
 
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			dirCh <- strings.TrimSpace(scanner.Text())
-		}
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				dirCh <- strings.TrimSpace(scanner.Text())
+			}
 
-		if err := scanner.Err(); err != nil {
-			fmt.Printf("Error reading directory list: %s\n", err)
-			os.Exit(1)
+			if err := scanner.Err(); err != nil {
+				fmt.Printf("Error reading directory list: %s\n", err)
+				os.Exit(1)
+			}
+		} else {
+			dirCh <- dir
 		}
-	} else {
-		dirCh <- dir
-	}
+	}()
 
 	wg.Add(conc)
 	for i := 0; i < conc; i++ {
@@ -111,7 +117,7 @@ func main() {
 			defer wg.Done()
 			for u := range urlCh {
 				for d := range dirCh {
-					// Send requests
+					// Send GET request
 					reqURL := u + d
 					resp, err := client.Get(reqURL)
 					if err != nil {
