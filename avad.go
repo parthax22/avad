@@ -126,12 +126,12 @@ func main() {
 					}
 					defer resp.Body.Close()
 
-					// Handle response
+					
 					result := fmt.Sprintf("URL: %s, Directory: %s, Status: %s, Size: %d", u, d, resp.Status, resp.ContentLength)
 					fmt.Println(result)
 					resultCh <- result
 
-					// Convert to POST request
+					
 					postResp, postErr := convertToPostRequest(u, "data=example")
 					if postErr != nil {
 						fmt.Printf("Error converting GET to POST request: %s\n", postErr)
